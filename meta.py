@@ -52,7 +52,7 @@ def ex_latex_and_text_to_add(content,lines):
         lines.append(result)
         line_count += 1
         groups.clear()
-
+        
 
 def generate_code(scripts:str):
     global line_count
@@ -67,7 +67,16 @@ def generate_code(scripts:str):
                 f"self.play({write_str})"
             )
             lines.append("self.wait(2)")
-        
+
+        if top_level["tag"] == "narrator":
+            x:str = top_level["content"]
+            x = x.replace("\n","")
+            print(x)
+            cc = f"""
+            with self.voiceover(text="{x}"):
+            pass
+            """.strip()
+            lines.append(cc)
     result = template.render(lines=lines)
     
     with open("./result.py","w",encoding="utf-8") as f:
