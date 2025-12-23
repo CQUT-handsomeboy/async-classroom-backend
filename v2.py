@@ -30,7 +30,7 @@ class TrigonometricFunctionAnimation(Scene):
         # 第一行：设函数和导数公式
         line1 = VGroup(
             Text("设函数", font_size=36),
-            MathTex("f'(x) = 5(\\sin 5x - \\sin x) = 0", font_size=36)
+            MathTex("f(x) = 5\\cos x - \\cos 5x", font_size=36)
         ).arrange(RIGHT, buff=0.3)
         pp.append(line1)
 
@@ -63,16 +63,22 @@ class TrigonometricFunctionAnimation(Scene):
         pp.append(q2_line2)
 
         # 第三问
-        # pp.append(text5_1 := Text("(3) 若存在", font_size=32).next_to(text4_1, DOWN).align_to(text3_1, LEFT))
-        # pp.append(question5_2 := MathTex("t", font_size=32).next_to(text5_1, RIGHT))
-        # pp.append(text5_3 := Text("使得对任意", font_size=32).next_to(question5_2, RIGHT))
-        # pp.append(question5_4 := MathTex("x", font_size=32).next_to(text5_3, RIGHT))
-        # pp.append(text5_5 := Text("，都有", font_size=32).next_to(question5_4, RIGHT))
+        q3_line1 = VGroup(
+            Text("(3) 若存在", font_size=32),
+            MathTex("t", font_size=32),
+            Text("使得对任意", font_size=32),
+            MathTex("x", font_size=32),
+            Text("，都有", font_size=32)
+        ).arrange(RIGHT, buff=0.2).next_to(q2_line2, DOWN)
+        pp.append(q3_line1)
 
-        # pp.append(question6 := MathTex("5\\cos x - \\cos(5x + t) \\leq b", font_size=32).next_to(text5_5, DOWN).align_to(text5_1, LEFT))
-        # pp.append(text6_2 := Text("，求", font_size=32).next_to(question6, RIGHT))
-        # pp.append(question6_3 := MathTex("b", font_size=32).next_to(text6_2, RIGHT))
-        # pp.append(text6_4 := Text("的最小值", font_size=32).next_to(question6_3, RIGHT))
+        q3_line2 = VGroup(
+            MathTex("5\\cos x - \\cos(5x + t) \\leq b", font_size=32),
+            Text("，求", font_size=32),
+            MathTex("b", font_size=32),
+            Text("的最小值", font_size=32)
+        ).arrange(RIGHT, buff=0.2).next_to(q3_line1, DOWN)
+        pp.append(q3_line2)
 
         self.play([Write(x) for x in pp])
         self.wait(2)
