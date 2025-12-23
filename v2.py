@@ -1,10 +1,13 @@
 from manim import *
 import numpy as np
+from manim_voiceover import VoiceoverScene
+from manim_voiceover.services.gtts import GTTSService
+from speech_machine import CustomService
 
-class TrigonometricFunctionAnimation(Scene):
+class TrigonometricFunctionAnimation(VoiceoverScene):
     def construct(self):
         # 第一问
-        # 首先看一下第一小问，求零到四分之派的最大值
+        # 
         # 最快的方法是和差化积
         # 直接对它求导
         # 你会发现应该是五倍的sin5X减去sin x
@@ -24,6 +27,8 @@ class TrigonometricFunctionAnimation(Scene):
         # 所以这个函数啊是在0~4分之派上
         # 先递增后递减
         # 然后这边有个最大值是三根号三
+        # self.set_speech_service(GTTSService())
+        self.set_speech_service(CustomService())
         pp = []
         # 显示题目
 
@@ -35,17 +40,17 @@ class TrigonometricFunctionAnimation(Scene):
         pp.append(line1)
 
         # 第一问
-        q1_parts = VGroup(
+        q1 = VGroup(
             Text("(1) 求", font_size=24),
             MathTex("f(x)", font_size=24),
             Text("在", font_size=24),
             MathTex("(0, \\frac{\\pi}{4})", font_size=24),
             Text("的最大值", font_size=24)
         ).arrange(RIGHT, buff=0.2).next_to(line1, DOWN, aligned_edge=LEFT)
-        pp.append(q1_parts)
+        pp.append(q1)
 
         # 第二问
-        q2_line1 = VGroup(
+        q2 = VGroup(
             Text("(2) 给定", font_size=24),
             MathTex("\\theta \\in (0, \\pi)", font_size=24),
             Text("，设", font_size=24),
@@ -55,12 +60,12 @@ class TrigonometricFunctionAnimation(Scene):
             MathTex("y \\in [a-\\theta, a+\\theta]", font_size=24),
             Text("，使得", font_size=24),
             MathTex("\\cos y \\leq \\cos \\theta", font_size=24)
-        ).arrange(RIGHT, buff=0.2).next_to(q1_parts, DOWN, aligned_edge=LEFT)
-        pp.append(q2_line1)
+        ).arrange(RIGHT, buff=0.2).next_to(q1, DOWN, aligned_edge=LEFT)
+        pp.append(q2)
 
 
         # 第三问
-        q3_line1 = VGroup(
+        q3 = VGroup(
             Text("(3) 若存在", font_size=24),
             MathTex("t", font_size=24),
             Text("使得对任意", font_size=24),
@@ -70,11 +75,21 @@ class TrigonometricFunctionAnimation(Scene):
             Text("，求", font_size=24),
             MathTex("b", font_size=24),
             Text("的最小值", font_size=24)
-        ).arrange(RIGHT, buff=0.2).next_to(q2_line1, DOWN, aligned_edge=LEFT)
-        pp.append(q3_line1)
-
+        ).arrange(RIGHT, buff=0.2).next_to(q2, DOWN, aligned_edge=LEFT)
+        pp.append(q3)
+        
         self.play([Write(x) for x in pp])
-        self.wait(2)
+        with self.voiceover(text="首先看一下第一小问，求零到四分之派的最大值") as tracker:
+            self.play(FadeOut(q2),FadeOut(q3))
+        
+        with self.voiceover(text="最快的方法是和差化积") as tracker:
+            self.wait(1)
+        
+        with self.voiceover(text="首先直接对它求导会发现应该是五倍的sin5X减去sin x") as tracker:
+            # a1 = VGroup(...)
+            self.wait(1)
+        
+        
 # 运行动画的代码
 if __name__ == "__main__":
     # 使用命令行运行：

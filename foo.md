@@ -1,5 +1,7 @@
 <question>
-设函数 $f(x) = 5\cos x - \cos 5x$。
+设函数 
+
+$f(x) = 5\cos x - \cos 5x$。
 
 （1）求 $f(x)$ 在 $(0, \frac{\pi}{4})$ 的最大值；
 
