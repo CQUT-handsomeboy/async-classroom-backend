@@ -1,7 +1,6 @@
 from manim import *
 import numpy as np
 from manim_voiceover import VoiceoverScene
-from manim_voiceover.services.gtts import GTTSService
 from speech_machine import CustomService
 
 class TrigonometricFunctionAnimation(VoiceoverScene):
