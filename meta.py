@@ -55,11 +55,18 @@ def ex_latex_and_text_to_add(content,lines):
 
 
 def generate_code(scripts:str):
+    global line_count
     lines = []
     top_levels = extract_top_level_tags_in_order(scripts)
     for top_level in top_levels:
         if top_level["tag"] == "question":
             ex_latex_and_text_to_add(top_level["content"],lines)
+            write_ = [f"Write(line{x})" for x in range(line_count) ]
+            write_str = ",".join(write_)
+            lines.append(
+                f"self.play({write_str})"
+            )
+            lines.append("self.wait(2)")
         
     result = template.render(lines=lines)
     
