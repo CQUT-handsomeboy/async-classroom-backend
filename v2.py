@@ -29,56 +29,49 @@ class TrigonometricFunctionAnimation(Scene):
 
         # 第一行：设函数和导数公式
         line1 = VGroup(
-            Text("设函数", font_size=36),
-            MathTex("f(x) = 5\\cos x - \\cos 5x", font_size=36)
-        ).arrange(RIGHT, buff=0.3)
+            Text("设函数", font_size=28),
+            MathTex("f(x) = 5\\cos x - \\cos 5x", font_size=28)
+        ).arrange(RIGHT, buff=0.3).to_corner(UL)
         pp.append(line1)
 
         # 第一问
         q1_parts = VGroup(
-            Text("(1) 求", font_size=32),
-            MathTex("f(x)", font_size=32),
-            Text("在", font_size=32),
-            MathTex("(0, \\frac{\\pi}{4})", font_size=32),
-            Text("的最大值", font_size=32)
-        ).arrange(RIGHT, buff=0.2).next_to(line1, DOWN)
+            Text("(1) 求", font_size=24),
+            MathTex("f(x)", font_size=24),
+            Text("在", font_size=24),
+            MathTex("(0, \\frac{\\pi}{4})", font_size=24),
+            Text("的最大值", font_size=24)
+        ).arrange(RIGHT, buff=0.2).next_to(line1, DOWN, aligned_edge=LEFT)
         pp.append(q1_parts)
 
         # 第二问
         q2_line1 = VGroup(
-            Text("(2) 给定", font_size=32),
-            MathTex("\\theta \\in (0, \\pi)", font_size=32),
-            Text("，设", font_size=32),
-            MathTex("a", font_size=32),
-            Text("为实数，证明：", font_size=32)
-        ).arrange(RIGHT, buff=0.2).next_to(q1_parts, DOWN)
+            Text("(2) 给定", font_size=24),
+            MathTex("\\theta \\in (0, \\pi)", font_size=24),
+            Text("，设", font_size=24),
+            MathTex("a", font_size=24),
+            Text("为实数，证明：", font_size=24),
+            Text("存在", font_size=24),
+            MathTex("y \\in [a-\\theta, a+\\theta]", font_size=24),
+            Text("，使得", font_size=24),
+            MathTex("\\cos y \\leq \\cos \\theta", font_size=24)
+        ).arrange(RIGHT, buff=0.2).next_to(q1_parts, DOWN, aligned_edge=LEFT)
         pp.append(q2_line1)
 
-        q2_line2 = VGroup(
-            Text("存在", font_size=32),
-            MathTex("y \\in [a-\\theta, a+\\theta]", font_size=32),
-            Text("，使得", font_size=32),
-            MathTex("\\cos y \\leq \\cos \\theta", font_size=32)
-        ).arrange(RIGHT, buff=0.2).next_to(q2_line1, DOWN)
-        pp.append(q2_line2)
 
         # 第三问
         q3_line1 = VGroup(
-            Text("(3) 若存在", font_size=32),
-            MathTex("t", font_size=32),
-            Text("使得对任意", font_size=32),
-            MathTex("x", font_size=32),
-            Text("，都有", font_size=32)
-        ).arrange(RIGHT, buff=0.2).next_to(q2_line2, DOWN)
+            Text("(3) 若存在", font_size=24),
+            MathTex("t", font_size=24),
+            Text("使得对任意", font_size=24),
+            MathTex("x", font_size=24),
+            Text("，都有", font_size=24),
+             MathTex("5\\cos x - \\cos(5x + t) \\leq b", font_size=24),
+            Text("，求", font_size=24),
+            MathTex("b", font_size=24),
+            Text("的最小值", font_size=24)
+        ).arrange(RIGHT, buff=0.2).next_to(q2_line1, DOWN, aligned_edge=LEFT)
         pp.append(q3_line1)
-
-        q3_line2 = VGroup(
-            MathTex("5\\cos x - \\cos(5x + t) \\leq b", font_size=32),
-            Text("，求", font_size=32),
-            MathTex("b", font_size=32),
-            Text("的最小值", font_size=32)
-        ).arrange(RIGHT, buff=0.2).next_to(q3_line1, DOWN)
-        pp.append(q3_line2)
 
         self.play([Write(x) for x in pp])
         self.wait(2)
