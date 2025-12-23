@@ -8,7 +8,7 @@ from textwrap import dedent
 env = Environment(loader=FileSystemLoader('templates'))
 template = env.get_template('code.py.tpl')
 
-def ex_question(raw:str) -> List[str]:
+def ex_latex_and_text(raw:str) -> List[str]:
     lines = []
     for line in raw.split("\n"):
         if line == "": continue
@@ -30,33 +30,36 @@ def ex_question(raw:str) -> List[str]:
     return lines
 
 line_count = 0
-def generate_code(scripts:str):
+def ex_latex_and_text_to_add(content,lines):
     global line_count
+    texts = ex_latex_and_text(content)
+    groups = []
+    for line,formula_mask in texts:
+        for i,c in enumerate(line):
+            if (formula_mask[i]) :
+                cc = f'MathTex("{c}", font_size=24)'
+            else:
+                cc = f'Text("{c}", font_size=24)'
+            cc = cc.replace('\\', '\\\\')
+            groups.append(cc)
+        l = (",".join(groups))
+        
+        result = f"line{line_count} = VGroup({l}).arrange(RIGHT, buff=0.2)"
+        if line_count != 0:
+            result += f".next_to(line{line_count-1}, DOWN, aligned_edge=LEFT)"
+        else:
+            result += f".arrange(RIGHT, buff=0.3).to_corner(UL)"
+        lines.append(result)
+        line_count += 1
+        groups.clear()
+
+
+def generate_code(scripts:str):
     lines = []
     top_levels = extract_top_level_tags_in_order(scripts)
     for top_level in top_levels:
         if top_level["tag"] == "question":
-            texts = ex_question(top_level["content"])
-            groups = []
-            for line,formula_mask in texts:
-                for i,c in enumerate(line):
-                    if (formula_mask[i]) :
-                        cc = f'MathTex("{c}", font_size=24)'
-                        groups.append(cc)
-                    else:
-                        cc = f'Text("{c}", font_size=24)'
-                        groups.append(cc)
-                l = (",".join(groups))
-                
-                result = f"line{line_count} = VGroup({l}).arrange(RIGHT, buff=0.2)"
-                if line_count != 0:
-                    result += f".next_to(line{line_count-1}, DOWN, aligned_edge=LEFT)"
-                else:
-                    result += f".arrange(RIGHT, buff=0.3).to_corner(UL)"
-                lines.append(result)
-                line_count += 1
-                groups.clear()
-            print(lines)
+            ex_latex_and_text_to_add(top_level["content"],lines)
         
     result = template.render(lines=lines)
     
