@@ -1,64 +1,52 @@
+from markdown_it import MarkdownIt
+from markdown_it.rules_inline import StateInline
 import re
-from mistletoe import Document
-from mistletoe.block_token import BlockToken
-from mistletoe.html_renderer import HtmlRenderer
 
-class QuestionBlock(BlockToken):
-    pattern = re.compile(r'^\s*<question>(.*?)</question>\s*$', re.DOTALL | re.MULTILINE)
-    
-    def __init__(self, match):
-        self.content = match.group(1).strip()
+TAG_RE = re.compile(r'\{tag\s+(\w+)=(\w+)\}')
 
-    @classmethod
-    def start(cls, line):
-        return line.strip().startswith('<question>')
+def custom_tag_rule(state: StateInline, silent: bool):
+    pos = state.pos
+    src = state.src
 
-    @classmethod
-    def read(cls, lines):
-        line_buffer = [next(lines)]
-        for line in lines:
-            line_buffer.append(line)
-            if '</question>' in line:
-                break
-        return cls.pattern.search(''.join(line_buffer))
+    if not src.startswith('{tag', pos):
+        return False
 
-class AnswerBlock(BlockToken):
-    pattern = re.compile(r'^\s*<answer>(.*?)</answer>\s*$', re.DOTALL | re.MULTILINE)
-    
-    def __init__(self, match):
-        self.content = match.group(1).strip()
+    m = TAG_RE.match(src[pos:])
+    if not m:
+        return False
 
-    @classmethod
-    def start(cls, line):
-        return line.strip().startswith('<answer>')
+    key, value = m.groups()
+    start = pos + m.end()
+    end = src.find('{/tag}', start)
+    if end == -1:
+        return False
 
-    @classmethod
-    def read(cls, lines):
-        line_buffer = [next(lines)]
-        for line in lines:
-            line_buffer.append(line)
-            if '</answer>' in line:
-                break
-        return cls.pattern.search(''.join(line_buffer))
+    if not silent:
+        # 创建 token
+        token = state.push('custom_tag', 'span', 0)
+        token.meta = {'attrs': {key: value}}
 
-class Extractor(HtmlRenderer):
-    def __init__(self):
-        super().__init__(QuestionBlock,AnswerBlock)
-        self.questions = []
-        self.answers = []
+        # 一定要传入一个列表，不要 None
+        token.children = []
+        state.md.inline.parse(src[start:end], state.md, state.env, token.children)
 
-    def render_question_block(self, token):
-        self.questions.append(token.content)
-        return ""
+    state.pos = end + len('{/tag}')
+    return True
 
-    def render_answer_block(self, token):
-        self.answers.append(token.content)
-        return ""
 
-with open("./foo.md","r",encoding="utf-8") as f:
-    markdown_content = f.read()
 
-with Extractor() as renderer:
-    renderer.render(Document(markdown_content))
-    print(renderer.questions) 
-    print(renderer.answers) 
+md = MarkdownIt()
+md.inline.ruler.before('emphasis', 'custom_tag', custom_tag_rule)
+
+def render_custom_tag(self, tokens, idx, options, env):
+    token = tokens[idx]
+    attrs = token.meta['attrs']
+    content = self.renderInline(token.children, options, env)
+    attr_str = ' '.join(f'data-{k}="{v}"' for k, v in attrs.items())
+    return f'<span {attr_str}>{content}</span>'
+
+md.add_render_rule('custom_tag', render_custom_tag)
+
+text = "这是一个 {tag key=value}内联内容{/tag} 的例子。"
+html = md.render(text)
+print(html)
