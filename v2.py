@@ -6,28 +6,6 @@ from speech_machine import CustomService
 
 class TrigonometricFunctionAnimation(VoiceoverScene):
     def construct(self):
-        # 第一问
-        # 
-        # 最快的方法是和差化积
-        # 直接对它求导
-        # 你会发现应该是五倍的sin5X减去sin x
-        # 那这个东西啊可以进行一个和差化积
-        # 可以不用这个
-        # 但用这个应该是最快的
-        # 用这个的话
-        # 他应该就等于十倍的cos sin x乘以sin2X
-        # 而X是0~4分之派
-        # 所以sin2X是不是大于零啊
-        # 因此就看cos3X了
-        # 那它只有一个零点嘛
-        # 在0~4分之派里就是一个六分之派
-        # 所以FX在0~6分之派上递增
-        # 六分之派到四分之派上是递减的
-        # 因此FX max也就是F6分之派等于三根号三
-        # 所以这个函数啊是在0~4分之派上
-        # 先递增后递减
-        # 然后这边有个最大值是三根号三
-        # self.set_speech_service(GTTSService())
         self.set_speech_service(CustomService())
         pp = []
         # 显示题目
@@ -85,13 +63,42 @@ class TrigonometricFunctionAnimation(VoiceoverScene):
         with self.voiceover(text="最快的方法是和差化积") as tracker:
             self.wait(1)
         
-        with self.voiceover(text="首先直接对它求导会发现应该是五倍的sin5X减去sin x") as tracker:
-            # a1 = VGroup(...)
+        with self.voiceover(text="首先直接对它求导会发现应该是五倍的sin5X减去sin x，这个部分可以进行和差化积") as tracker:
+            a1 = VGroup(
+                tex:=MathTex("f'(x) = -5\\sin x + 5\\sin 5x",
+                        "=",
+                        "5(\\sin 5x - \\sin x)",
+                        "=",
+                        "10 \\cos 3x \\cdot ","\\sin 2x", font_size=24),
+            ).arrange(RIGHT, buff=0.2).next_to(q1, DOWN, aligned_edge=LEFT)
+            self.play(Write(a1))
+            self.play(Indicate(tex[2]))
             self.wait(1)
         
+        with self.voiceover(text="得到结果10 cos 3x乘sin 2x") as tracker:
+            self.play(Indicate(tex[4:]))
+            
+        with self.voiceover(text="因为sin2x是零到四分之派") as tracker:
+            self.play(Indicate(q1[3]))
+
+        with self.voiceover(text="所以sin2x大于0，因此cos 3x的零点决定整个式子的零点") as tracker:
+            self.play(Indicate(tex[5]))
         
-# 运行动画的代码
-if __name__ == "__main__":
-    # 使用命令行运行：
-    # manim -pql main.py TrigonometricFunctionAnimation
-    pass
+        with self.voiceover(text="可知fx在0到六分之派中单调递增，在六分之派单调递减") as tracker:
+            a2 = VGroup(
+                MathTex("f(x)",font_size=24),
+                Text("在",font_size=24),
+                MathTex("(0, \\frac{\\pi}{6}) \\nearrow",font_size=24),
+                Text("在",font_size=24),
+                MathTex("(\\frac{\\pi}{6}, \\frac{\\pi}{4}) \\searrow",font_size=24),
+            ).arrange(RIGHT, buff=0.2).next_to(a1, DOWN, aligned_edge=LEFT)
+            self.play(Write(a2))
+        
+        with self.voiceover(text="因此最大值是3倍根号3") as tracker:
+            a3 = VGroup(
+                MathTex("f(x)_{\\max} = f\\left(\\frac{\\pi}{6}\\right) = \\frac{5\\sqrt{3}}{2} + \\frac{\\sqrt{3}}{2} = 3\\sqrt{3}",font_size=24),
+            ).arrange(RIGHT, buff=0.2).next_to(a2, DOWN, aligned_edge=LEFT)
+            self.play(Write(a3))
+            
+        
+# manim -pql .\v2.py TrigonometricFunctionAnimation --disable_caching

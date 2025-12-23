@@ -16,7 +16,7 @@ load_dotenv()
 TTS_URL = getenv("TTS_URL")
 TTS_KEY = getenv("TTS_KEY")
 
-def generate_speech(text:str,speech_file_path:Path,speaker:str = "claire"):
+def generate_speech(text:str,speech_file_path:Path,speaker:str):
     print("[TTS] 调用了")
     client = OpenAI(
         api_key=TTS_KEY,
@@ -52,12 +52,19 @@ class CustomService(SpeechService):
             cache_dir_to_use = cache_dir if cache_dir is not None else self.cache_dir
 
         # 确保路径是 Path 对象或字符串
+        path_obj = Path(path)
 
-        print(f"[TTS] 正在使用自定义引擎合成: {text}")
-        generate_speech(text, speech_file_path=path, speaker=self.voice_name)
+        # 检查缓存是否已存在
+        if path_obj.exists():
+            print(f"[TTS] 缓存命中: {path}")
+            audio = File(path_obj)
+        else:
+            print(f"[TTS] 缓存未命中，正在合成: {text}")
+            generate_speech(text, speech_file_path=path_obj, speaker=self.voice_name)
 
-        assert Path(path).exists()
-        audio = File(path)
+            # 验证文件是否生成成功
+            assert path_obj.exists()
+            audio = File(path_obj)
 
         # 计算相对于 cache_dir 的路径
         relative_path = Path(path).relative_to(cache_dir_to_use) if Path(path).is_relative_to(cache_dir_to_use) else Path(path).name
