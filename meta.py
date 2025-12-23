@@ -10,26 +10,28 @@ template = env.get_template('code.py.tpl')
 def ex_question(raw:str) -> List[str]:
     for line in raw.split("\n"):
         if line == "": continue
-        length = len(line)
-        positions = [0]
-        formula = False
+        formula_sign = False
+        res = ""
+        formula_mask = []
+        texts = []
         for i,c in enumerate(line):
             if "$" == c: 
-                formula = not formula
+                texts.append(res)
+                formula_mask.append(formula_sign)
+                formula_sign = not formula_sign
+                res = ""
                 continue
-            if formula: continue
-            print(c,end="")
-        # for i,pos in enumerate(positions):
-        #     if i == 0: p = line[:pos]
-        #     elif i == length: p = line[pos:]
-        #     else: p = line[i:i+1]
-        #     print(p)
+            res += c
+        texts.append(res)
+        formula_mask.append(formula_sign)
+        
+        return texts,formula_mask
 def generate_code(scripts:str):   
     lines = []
     top_levels = extract_top_level_tags_in_order(scripts)
     for top_level in top_levels:
         if top_level["tag"] == "question":
-            ex_question(top_level["content"])
+            texts, formula_mask = ex_question(top_level["content"])
                 
     result = template.render(lines=lines)
     
