@@ -28,7 +28,10 @@ def ex_question(raw:str) -> List[str]:
         formula_mask.append(formula_sign)
         lines.append((texts,formula_mask))
     return lines
-def generate_code(scripts:str):   
+
+line_count = 0
+def generate_code(scripts:str):
+    global line_count
     lines = []
     top_levels = extract_top_level_tags_in_order(scripts)
     for top_level in top_levels:
@@ -44,8 +47,16 @@ def generate_code(scripts:str):
                         cc = f'Text("{c}", font_size=24)'
                         groups.append(cc)
                 l = (",".join(groups))
-                print(f"VGroup({l})")
+                
+                result = f"line{line_count} = VGroup({l}).arrange(RIGHT, buff=0.2)"
+                if line_count != 0:
+                    result += f".next_to(line{line_count-1}, DOWN, aligned_edge=LEFT)"
+                else:
+                    result += f".arrange(RIGHT, buff=0.3).to_corner(UL)"
+                lines.append(result)
+                line_count += 1
                 groups.clear()
+            print(lines)
         
     result = template.render(lines=lines)
     
