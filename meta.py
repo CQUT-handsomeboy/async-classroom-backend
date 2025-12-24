@@ -5,9 +5,18 @@ from pprint import pp
 from typing import List, Dict, Tuple
 from textwrap import dedent
 import re
+import logging
+import json
 
 env = Environment(loader=FileSystemLoader('templates'))
 template = env.get_template('code.py.tpl')
+
+def escape_string(s: str) -> str:
+    """转义字符串中的特殊字符，用于Python字符串字面量"""
+    # 使用json.dumps来正确处理转义，然后去掉外部的引号
+    escaped = json.dumps(s, ensure_ascii=False)
+    # json.dumps会添加外部的双引号，我们需要去掉它们
+    return escaped[1:-1]
 
 # 全局引用存储
 quote_store: Dict[str, str] = {}
@@ -34,8 +43,10 @@ def extract_and_store_quotes(text: str) -> str:
 
 def parse_latex_and_text(raw:str) -> List[str]:
     lines = []
-    for line in raw.split("\n"):
-        if line == "": continue
+    for line in raw.splitlines():
+        # 跳过空行和只包含空白字符的行
+        if not line.strip():
+            continue
         # 先处理引用标签
         processed_line = extract_and_store_quotes(line)
 
@@ -89,8 +100,8 @@ def create_animation_objects_from_text(content,lines):
                     if quote_name not in quote_object_map:
                         # 使用存储的引用内容创建 MathTex
                         quote_content = quote_store[quote_name]
-                        code_string = f'MathTex("{quote_content}", font_size=24)'
-                        code_string = code_string.replace('\\', '\\\\')
+                        escaped_content = escape_string(quote_content)
+                        code_string = f'MathTex("{escaped_content}", font_size=24)'
                         groups.append(code_string)
                         # 记录引用对象位置
                         quote_object_map[quote_name] = (current_line_number, len(groups) - 1)
@@ -109,10 +120,12 @@ def create_animation_objects_from_text(content,lines):
                     else:
                         code_string = f'Text("", font_size=24)'  # 空的 Text 是允许的
                 elif (formula_mode_flags[segment_index]) :
-                    code_string = f'MathTex("{current_segment}", font_size=24)'
+                    escaped_segment = escape_string(current_segment)
+                    code_string = f'MathTex("{escaped_segment}", font_size=24)'
                 else:
-                    code_string = f'Text("{current_segment}", font_size=24)'
-                code_string = code_string.replace('\\', '\\\\')
+                    logging.info(current_segment)
+                    escaped_segment = escape_string(current_segment)
+                    code_string = f'Text("{escaped_segment}", font_size=24)'
                 groups.append(code_string)
 
         joined_groups = (",".join(groups))
@@ -232,7 +245,9 @@ def process_simultaneous_animation(raw:str,lines:List[str]):
 
     for top_level in top_levels:
         if top_level["tag"] == "narrator":
-            content = top_level["content"].replace("\n", " ")
+            content = top_level["content"].replace("\n", " ").replace("\r", " ")
+            # 规范化空格
+            content = re.sub(r'\s+', ' ', content).strip()
             # 处理引用标签，获取分段
             segments = process_narrator_with_quotes(content)
             all_narrator_segments.extend(segments)
@@ -257,7 +272,8 @@ def process_simultaneous_animation(raw:str,lines:List[str]):
             continue
 
         # 开始 with self.voiceover 块
-        lines.append(f'with self.voiceover(text="{text_segment}"):')
+        escaped_text = escape_string(text_segment)
+        lines.append(f'with self.voiceover(text="{escaped_text}"):')
 
         # 添加动画代码（如果有）
         for animation in animations:
@@ -274,6 +290,12 @@ def generate_code(scripts:str):
     quote_object_map.clear()
 
     lines = []
+    # 统一换行符为 \n，并规范化空白行
+    scripts = scripts.replace('\r\n', '\n').replace('\r', '\n')
+    # 合并连续的换行符，但保留至少一个
+    while '\n\n\n' in scripts:
+        scripts = scripts.replace('\n\n\n', '\n\n')
+    scripts = scripts.replace("\n\n","\n")
     top_levels = extract_top_level_tags_in_order(scripts)
     for top_level in top_levels:
         if top_level["tag"] == "question" or top_level["tag"] == "answer":
@@ -287,12 +309,15 @@ def generate_code(scripts:str):
 
         if top_level["tag"] == "narrator":
             narrator_text:str = top_level["content"]
-            narrator_text = narrator_text.replace("\n","")
-            voiceover_code = f"""
-            with self.voiceover(text="{narrator_text}"):
-            pass
-            """.strip()
-            lines.append(voiceover_code)
+            # 移除换行符，但保留空格
+            narrator_text = narrator_text.replace("\n", " ").replace("\r", " ")
+            # 规范化空格：合并多个连续空格为单个空格
+            narrator_text = re.sub(r'\s+', ' ', narrator_text).strip()
+
+            if narrator_text:
+                escaped_text = escape_string(narrator_text)
+                lines.append(f'with self.voiceover(text="{escaped_text}"):')
+                lines.append('    pass')
         
         if top_level["tag"] == "sametime":
             process_simultaneous_animation(top_level["content"],lines)
