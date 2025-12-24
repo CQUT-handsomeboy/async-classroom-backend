@@ -17,6 +17,7 @@ import logging
 from bottle import Bottle, request, response, static_file, abort
 from meta import generate_code
 from pydantic import BaseModel
+from os import system
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -45,11 +46,6 @@ def run_manim_compile(task_id: str, code: str, scene_name: str, quality: str, re
         tasks[task_id]["status"] = "processing"
         tasks[task_id]["message"] = "开始编译..."
 
-        # 创建临时目录
-        temp_dir = Path(tempfile.mkdtemp(prefix="manim_"))
-        output_dir = temp_dir / "output"
-        output_dir.mkdir(exist_ok=True)
-
         # 使用generate_code生成result.py
         logger.info(f"任务 {task_id}: 生成Python代码...")
         generate_code(code)
@@ -62,41 +58,11 @@ def run_manim_compile(task_id: str, code: str, scene_name: str, quality: str, re
             tasks[task_id]["status"] = "failed"
             tasks[task_id]["message"] = error_msg
             return
+        
+        status = system(command:="manim -ql .\\result.py MainAnimation --disable_caching")
 
-        temp_result_py = temp_dir / "result.py"
-        shutil.copy2(result_py_path, temp_result_py)
-
-        logger.info(f"任务 {task_id}: 写入Python文件到 {temp_result_py}")
-
-        # 构建Manim命令
-        quality_flags = {
-            "low": "-pql",
-            "medium": "-pqm",
-            "high": "-pqh"
-        }
-
-        manim_command = [
-            "manim",
-            quality_flags.get(quality, "-pqm"),
-            str(temp_result_py),
-            scene_name,
-            "--media_dir", str(output_dir),
-            "--disable_caching"
-        ]
-
-        logger.info(f"任务 {task_id}: 执行命令: {' '.join(manim_command)}")
-
-        # 执行Manim编译
-        result = subprocess.run(
-            manim_command,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            cwd=temp_dir
-        )
-
-        if result.returncode != 0:
-            error_msg = f"Manim编译失败: {result.stderr}"
+        if status != 0:
+            error_msg = f"Manim编译失败"
             logger.error(f"任务 {task_id}: {error_msg}")
             tasks[task_id]["status"] = "failed"
             tasks[task_id]["message"] = error_msg
@@ -104,26 +70,13 @@ def run_manim_compile(task_id: str, code: str, scene_name: str, quality: str, re
 
         logger.info(f"任务 {task_id}: Manim编译成功")
 
-        # 查找生成的MP4文件 - 根据你的描述，路径是 media/videos/result/480p15/MainAnimation.mp4
-        video_file = output_dir / "videos" / "result" / resolution / f"{scene_name}.mp4"
-
-        if not video_file.exists():
-            # 尝试其他可能的位置
-            video_files = list(output_dir.glob("**/*.mp4"))
-            if not video_files:
-                error_msg = "未找到生成的MP4文件"
-                logger.error(f"任务 {task_id}: {error_msg}")
-                tasks[task_id]["status"] = "failed"
-                tasks[task_id]["message"] = error_msg
-                return
-            video_file = video_files[0]
-
+        video_file = Path(__file__).parent / "media/videos/result/480p15/MainAnimation.mp4"
+        
+        assert video_file.exists()
         logger.info(f"任务 {task_id}: 找到视频文件: {video_file}")
-
         # 将视频文件移动到videos文件夹，以task_id命名
-        videos_dir = Path("videos")
+        videos_dir = Path(__file__).parent / "videos"
         videos_dir.mkdir(parents=True, exist_ok=True)
-
         final_video_path = videos_dir / f"{task_id}.mp4"
         shutil.copy2(video_file, final_video_path)
 
@@ -134,9 +87,6 @@ def run_manim_compile(task_id: str, code: str, scene_name: str, quality: str, re
         tasks[task_id]["video_url"] = f"/videos/{task_id}.mp4"
 
         logger.info(f"任务 {task_id}: 视频文件已保存到 {final_video_path}")
-
-        # 清理临时目录
-        shutil.rmtree(temp_dir)
 
     except Exception as e:
         error_msg = f"编译过程中发生错误: {str(e)}"

@@ -7,6 +7,7 @@ from textwrap import dedent
 import re
 import logging
 import json
+from pathlib import Path
 
 env = Environment(loader=FileSystemLoader('templates'))
 template = env.get_template('code.py.tpl')
@@ -123,7 +124,6 @@ def create_animation_objects_from_text(content,lines):
                     escaped_segment = escape_string(current_segment)
                     code_string = f'MathTex("{escaped_segment}", font_size=24)'
                 else:
-                    logging.info(current_segment)
                     escaped_segment = escape_string(current_segment)
                     code_string = f'Text("{escaped_segment}", font_size=24)'
                 groups.append(code_string)
@@ -322,7 +322,7 @@ def generate_code(scripts:str):
         if top_level["tag"] == "sametime":
             process_simultaneous_animation(top_level["content"],lines)
         
-    result = template.render(lines=lines)
+    result = template.render(lines=lines,module_path=Path(__file__).parent.__str__().replace("\\","\\\\"))
     
     with open("./result.py","w",encoding="utf-8") as f:
         f.write(result)
