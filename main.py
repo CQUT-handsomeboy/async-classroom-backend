@@ -18,6 +18,7 @@ from bottle import Bottle, request, response, static_file, abort
 from meta import generate_code
 from pydantic import BaseModel
 from os import system
+import sys
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -277,7 +278,34 @@ def list_videos():
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="异步课堂后端")
+    parser.add_argument('--debug', action='store_true', help='启用调试模式（使用bottle内置服务器）')
+    parser.add_argument('--port', type=int, default=8080, help='服务器端口')
+    parser.add_argument('--host', type=str, default='0.0.0.0', help='服务器监听地址')
+    parser.add_argument('--server', type=str, choices=['bottle', 'waitress'], default='waitress', help='服务器类型：bottle（开发）或 waitress（生产）')
+    args = parser.parse_args()
+
     # 创建必要的目录
     VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
     SRT_DIR.mkdir(parents=True, exist_ok=True)
-    app.run(host='0.0.0.0', port=8080, debug=True, reloader=False)
+
+    print(f"启动异步课堂后端")
+    print(f"服务器: {args.server}")
+    print(f"地址: {args.host}:{args.port}")
+    print(f"模式: {'调试模式' if args.debug else '生产模式'}")
+
+    if args.server == 'waitress':
+        # 使用 waitress 作为生产服务器
+        try:
+            from waitress import serve
+            print("🔄 使用 Waitress 生产服务器...")
+            serve(app, host=args.host, port=args.port)
+        except ImportError:
+            print("❌ 未找到 waitress 模块，请安装: pip install waitress")
+            print("🔁 回退到 bottle 内置服务器...")
+            app.run(host=args.host, port=args.port, debug=args.debug, reloader=False)
+    else:
+        # 使用 bottle 内置开发服务器
+        print("🔧 使用 Bottle 内置开发服务器...")
+        app.run(host=args.host, port=args.port, debug=args.debug, reloader=False)
