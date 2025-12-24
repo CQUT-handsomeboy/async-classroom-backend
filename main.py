@@ -24,6 +24,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Bottle()
+videos_dir = Path(__file__).parent / "videos"
+srt_dir = Path(__file__).parent / "srt"
+generate_video_dir = Path(__file__).parent / "media/videos/result/480p15/"
+SCENE_NAME = "MainAnimation"
 
 # 存储任务状态
 tasks = {}
@@ -33,11 +37,7 @@ class CompileResponse(BaseModel):
     status: str
     message: str
     video_url: str | None = None
-
-class TaskStatusResponse(BaseModel):
-    status: bool
-    path: str | None = None
-
+    srt_url: str |None = None
 def run_manim_compile(task_id: str, code: str, scene_name: str, quality: str, resolution: str):
     """
     在后台运行Manim编译任务
@@ -59,7 +59,7 @@ def run_manim_compile(task_id: str, code: str, scene_name: str, quality: str, re
             tasks[task_id]["message"] = error_msg
             return
         
-        status = system(command:="manim -ql .\\result.py MainAnimation --disable_caching")
+        status = system(command:=f"manim -ql .\\result.py {SCENE_NAME} --disable_caching")
 
         if status != 0:
             error_msg = f"Manim编译失败"
@@ -70,21 +70,23 @@ def run_manim_compile(task_id: str, code: str, scene_name: str, quality: str, re
 
         logger.info(f"任务 {task_id}: Manim编译成功")
 
-        video_file = Path(__file__).parent / "media/videos/result/480p15/MainAnimation.mp4"
+        video_file = generate_video_dir / f"{SCENE_NAME}.mp4"
+        srt_file = generate_video_dir / f"{SCENE_NAME}.srt"
+        assert video_file.exists() and srt_file.exists()
         
-        assert video_file.exists()
         logger.info(f"任务 {task_id}: 找到视频文件: {video_file}")
         # 将视频文件移动到videos文件夹，以task_id命名
-        videos_dir = Path(__file__).parent / "videos"
-        videos_dir.mkdir(parents=True, exist_ok=True)
         final_video_path = videos_dir / f"{task_id}.mp4"
+        final_srt_path = srt_dir / f"{task_id}.srt"
         shutil.copy2(video_file, final_video_path)
+        shutil.copy2(srt_file, final_srt_path)
 
         # 更新任务状态
         tasks[task_id]["status"] = "completed"
         tasks[task_id]["message"] = "编译完成"
         tasks[task_id]["video_path"] = str(final_video_path)
         tasks[task_id]["video_url"] = f"/videos/{task_id}.mp4"
+        tasks[task_id]["srt_url"] = f"/videos/{task_id}.srt"
 
         logger.info(f"任务 {task_id}: 视频文件已保存到 {final_video_path}")
 
@@ -118,6 +120,7 @@ def compile_animation():
             "message": "任务已创建，等待处理",
             "video_path": None,
             "video_url": None,
+            "srt_url": None,
             "created_at": time.time()
         }
 
@@ -131,12 +134,12 @@ def compile_animation():
 
         # 返回响应
         response.content_type = 'application/json'
-        return json.dumps(CompileResponse(
+        res = CompileResponse(
             task_id=task_id,
             status="pending",
             message="编译任务已提交，正在后台处理",
-            video_url=None
-        ).__dict__)
+        )
+        return json.dumps(res.__dict__)
 
     except Exception as e:
         logger.error(f"任务创建失败: {str(e)}")
@@ -164,8 +167,7 @@ def serve_video(filename):
     """
     提供videos文件夹的静态文件服务
     """
-    videos_dir = Path("videos")
-    video_path = videos_dir / filename
+    video_path:Path = videos_dir / filename
 
     if not video_path.exists():
         abort(404, "视频文件不存在")
@@ -176,27 +178,17 @@ def serve_video(filename):
         download=filename
     )
 
-@app.route('/api/videos/<task_id>')
-def get_video(task_id):
-    """
-    获取生成的视频文件（兼容旧API）
-    """
-    if task_id not in tasks:
-        abort(404, "任务不存在")
+@app.route('/srt/<filename:path>')
+def serve_srt(filename):
+    srt_path = srt_dir / filename
 
-    task = tasks[task_id]
-
-    if task["status"] != "completed":
-        abort(400, "视频尚未生成完成")
-
-    video_path = task.get("video_path")
-    if not video_path or not os.path.exists(video_path):
-        abort(404, "视频文件不存在")
+    if not srt_path.exists():
+        abort(404, "字幕不存在")
 
     return static_file(
-        os.path.basename(video_path),
-        root=os.path.dirname(video_path),
-        download=f"animation_{task_id}.mp4"
+        filename,
+        root=str(srt_dir),
+        download=filename
     )
 
 @app.route('/videos')
@@ -204,7 +196,6 @@ def list_videos():
     """
     列出所有生成的视频文件
     """
-    videos_dir = Path("videos")
     video_files = list(videos_dir.glob("*.mp4"))
 
     html = """
@@ -246,11 +237,6 @@ def list_videos():
 
 if __name__ == "__main__":
     # 创建必要的目录
-    videos_dir = Path("videos")
     videos_dir.mkdir(parents=True, exist_ok=True)
-
-    # 创建媒体目录（兼容旧代码）
-    media_dir = Path("media") / "api_videos"
-    media_dir.mkdir(parents=True, exist_ok=True)
-
+    srt_dir.mkdir(parents=True, exist_ok=True)
     app.run(host='0.0.0.0', port=8080, debug=True, reloader=False)
