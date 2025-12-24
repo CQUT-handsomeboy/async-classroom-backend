@@ -53,16 +53,59 @@ def ex_latex_and_text_to_add(content,lines):
         line_count += 1
         groups.clear()
     
-def ex_sametime(raw):
-    extract_top_level_tags_in_order(raw)
-    
+def ex_sametime_to_add(raw:str,lines:List[str]):
+    top_levels = extract_top_level_tags_in_order(raw)
 
+    # 收集所有 narrator 文本
+    narrator_texts = []
+    for top_level in top_levels:
+        if top_level["tag"] == "narrator":
+            content = top_level["content"].replace("\n", " ")
+            narrator_texts.append(content)
+
+    # 合并 narrator 文本
+    combined_narrator = " ".join(narrator_texts)
+
+    # 开始 with self.voiceover 块
+    lines.append(f'with self.voiceover(text="{combined_narrator}"):')
+
+    # 记录当前行数，用于后续动画
+    start_line_count = line_count
+
+    # 创建一个临时列表来存储 with 块内部的代码
+    inner_lines = []
+
+    for top_level in top_levels:
+        # 处理 answer 标签
+        if top_level["tag"] == "answer":
+            # 调用 ex_latex_and_text_to_add，但传入临时列表
+            ex_latex_and_text_to_add(top_level["content"],inner_lines)
+
+    # 生成动画播放代码
+    if line_count > start_line_count:
+        write_lines = []
+        for i in range(start_line_count, line_count):
+            write_lines.append(f"Write(line{i})")
+
+        if write_lines:
+            write_str = ",".join(write_lines)
+            # 添加动画播放代码到临时列表
+            inner_lines.append(f"self.play({write_str})")
+            inner_lines.append("self.wait(2)")
+
+    # 添加一个缩进的 pass 语句作为 with 块的结束
+    inner_lines.append("pass")
+
+    # 将临时列表中的代码添加到主列表，每行添加4个空格的缩进
+    for line in inner_lines:
+        lines.append(f"    {line}")
+        
 def generate_code(scripts:str):
     global line_count
     lines = []
     top_levels = extract_top_level_tags_in_order(scripts)
     for top_level in top_levels:
-        if top_level["tag"] == "question":
+        if top_level["tag"] == "question" or top_level["tag"] == "answer":
             ex_latex_and_text_to_add(top_level["content"],lines)
             write_ = [f"Write(line{x})" for x in range(line_count) ]
             write_str = ",".join(write_)
@@ -81,7 +124,7 @@ def generate_code(scripts:str):
             lines.append(cc)
         
         if top_level["tag"] == "sametime":
-            ex_sametime(top_level["content"])
+            ex_sametime_to_add(top_level["content"],lines)
         
     result = template.render(lines=lines)
     
