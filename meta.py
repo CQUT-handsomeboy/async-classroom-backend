@@ -127,7 +127,7 @@ def ex_latex_and_text_to_add(content,lines):
         groups.clear()
     
 def process_narrator_with_quotes(narrator_text: str):
-    """处理 narrator 文本中的引用标签，生成 Indicate 动画"""
+    """处理 narrator 文本中的引用标签，返回分段文本和对应的动画"""
     # 匹配 <quoteX/> 标签
     pattern = r'<quote(\d+)/>'
 
@@ -135,30 +135,83 @@ def process_narrator_with_quotes(narrator_text: str):
     parts = re.split(pattern, narrator_text)
 
     # parts 会是 [文本, 数字, 文本, 数字, ...] 的形式
-    # 我们需要重建文本并生成动画
+    # 我们需要将文本分段，每段对应一个 voiceover 块
 
-    result_text = ""
-    quote_animations = []
+    segments = []  # 每个元素是 (文本, 动画代码列表)
 
     i = 0
+    current_text = ""
+    current_animations = []
+
     while i < len(parts):
         if i % 2 == 0:
             # 文本部分
-            result_text += parts[i]
+            text_part = parts[i].strip()
+            if text_part:
+                # 如果有累积的动画，先添加当前段
+                if current_text or current_animations:
+                    segments.append((current_text, current_animations.copy()))
+                    current_text = ""
+                    current_animations.clear()
+
+                # 添加纯文本段
+                segments.append((text_part, []))
         else:
-            # 引用标签部分 - 不添加到结果文本中
+            # 引用标签部分
             quote_num = parts[i]
             quote_name = f"quote{quote_num}"
 
-            # 检查是否有对应的引用对象
-            if quote_name in quote_object_map:
+            # 检查是否有对应的引用对象和存储的内容
+            if quote_name in quote_object_map and quote_name in quote_store:
                 line_idx, elem_idx = quote_object_map[quote_name]
-                # 生成 Indicate 动画代码
-                quote_animations.append(f"self.play(Indicate(line{line_idx}[{elem_idx}]))")
+                quote_content = quote_store[quote_name]
+
+                # 将引用内容转换为可读文本
+                readable_content = quote_content
+                # 替换常见的数学符号
+                replacements = {
+                    '\\cdot': '乘',
+                    '\\times': '乘',
+                    '\\sin': 'sin',
+                    '\\cos': 'cos',
+                    '\\tan': 'tan',
+                    '\\log': 'log',
+                    '\\ln': 'ln',
+                    '\\sqrt': '根号',
+                    '\\frac': '分之',
+                    '\\pi': 'pi',
+                    '\\theta': 'theta',
+                    '\\alpha': 'alpha',
+                    '\\beta': 'beta',
+                    '\\gamma': 'gamma',
+                    '\\Delta': 'Delta',
+                    '\\sum': '求和',
+                    '\\int': '积分',
+                    '\\lim': '极限'
+                }
+
+                for latex, readable in replacements.items():
+                    readable_content = readable_content.replace(latex, readable)
+
+                # 移除剩余的反斜杠
+                readable_content = readable_content.replace('\\', '')
+
+                # 添加引用文本段，包含 Indicate 动画
+                segments.append((readable_content.strip(), [f"self.play(Indicate(line{line_idx}[{elem_idx}]))"]))
+            else:
+                # 如果没有找到引用，跳过
+                pass
 
         i += 1
 
-    return result_text, quote_animations
+    # 添加最后一段
+    if current_text or current_animations:
+        segments.append((current_text, current_animations.copy()))
+
+    # 过滤空文本段
+    segments = [(text, anims) for text, anims in segments if text.strip()]
+
+    return segments
 
 def ex_sametime_to_add(raw:str,lines:List[str]):
     top_levels = extract_top_level_tags_in_order(raw)
@@ -174,31 +227,20 @@ def ex_sametime_to_add(raw:str,lines:List[str]):
             ex_latex_and_text_to_add(top_level["content"],inner_lines_for_objects)
 
     # 现在 quote_object_map 应该已经被填充了
-    # 收集所有 narrator 文本
-    narrator_texts = []
-    all_quote_animations = []  # 收集所有引用动画
+    # 收集所有 narrator 分段
+    all_narrator_segments = []  # 每个元素是 (文本, 动画代码列表)
 
     for top_level in top_levels:
         if top_level["tag"] == "narrator":
             content = top_level["content"].replace("\n", " ")
-            # 处理引用标签
-            processed_text, quote_animations = process_narrator_with_quotes(content)
-            narrator_texts.append(processed_text)
-            all_quote_animations.extend(quote_animations)
+            # 处理引用标签，获取分段
+            segments = process_narrator_with_quotes(content)
+            all_narrator_segments.extend(segments)
 
-    # 合并 narrator 文本
-    combined_narrator = " ".join(narrator_texts)
+    # 首先，在 voiceover 块之外创建对象和播放 Write 动画
+    lines.extend(inner_lines_for_objects)
 
-    # 开始 with self.voiceover 块
-    lines.append(f'with self.voiceover(text="{combined_narrator}"):')
-
-    # 创建一个临时列表来存储 with 块内部的代码
-    inner_lines = []
-
-    # 添加对象创建代码
-    inner_lines.extend(inner_lines_for_objects)
-
-    # 生成动画播放代码
+    # 生成动画播放代码（在 voiceover 块之外）
     if line_count > start_line_count:
         write_lines = []
         for i in range(start_line_count, line_count):
@@ -206,21 +248,23 @@ def ex_sametime_to_add(raw:str,lines:List[str]):
 
         if write_lines:
             write_str = ",".join(write_lines)
-            # 添加动画播放代码到临时列表
-            inner_lines.append(f"self.play({write_str})")
-            inner_lines.append("self.wait(2)")
+            lines.append(f"self.play({write_str})")
+            lines.append("self.wait(2)")
 
-    # 添加引用动画
-    for quote_animation in all_quote_animations:
-        inner_lines.append(quote_animation)
-        inner_lines.append("self.wait(0.5)")
+    # 现在为每个 narrator 分段生成 voiceover 块
+    for text_segment, animations in all_narrator_segments:
+        if not text_segment:
+            continue
 
-    # 添加一个缩进的 pass 语句作为 with 块的结束
-    inner_lines.append("pass")
+        # 开始 with self.voiceover 块
+        lines.append(f'with self.voiceover(text="{text_segment}"):')
 
-    # 将临时列表中的代码添加到主列表，每行添加4个空格的缩进
-    for line in inner_lines:
-        lines.append(f"    {line}")
+        # 添加动画代码（如果有）
+        for animation in animations:
+            lines.append(f"    {animation}")
+
+        # 添加 pass 语句
+        lines.append("    pass")
         
 def generate_code(scripts:str):
     global line_count, quote_store, quote_object_map
