@@ -5,4 +5,5 @@ cache/*
 .env
 result*
 test*
-videos/*
+data/*
+tasks.json
