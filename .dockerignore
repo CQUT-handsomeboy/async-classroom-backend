@@ -1,1 +1,52 @@
-data/*
+# 忽略Python虚拟环境
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 忽略IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 忽略操作系统文件
+.DS_Store
+Thumbs.db
+
+# 忽略日志和临时文件
+*.log
+*.tmp
+*.temp
+
+# 忽略数据目录（通过卷挂载）
+data/
+media/
+cache/
+
+# 忽略测试文件
+tests/
+test_*.py
+
+# 忽略构建产物
+dist/
+build/
+*.egg-info/
+
+# 忽略环境文件（敏感信息）
+.env
+.env.local
+.env.*.local
+
+# 忽略git文件
+.git/
+.gitignore
+
+# 忽略Docker相关文件（除了Dockerfile）
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
+
+# 忽略应用临时文件
+result*
+tasks.json
